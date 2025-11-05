@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Anime Task Manager</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+      min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px
+    }
+
+    .phone-container{
+      width:390px;height:844px;background:#0f1419;border-radius:40px;
+      box-shadow:0 20px 60px rgba(0,0,0,.5);overflow:hidden;position:relative
+    }
+
+    .app-header{
+      background:linear-gradient(180deg,#1e2936 0%,#0f1419 100%);
+      padding:20px;border-bottom:1px solid rgba(255,255,255,.05)
+    }
+    .profile-bar{display:flex;align-items:center;justify-content:space-between}
+    .profile-info{display:flex;align-items:center;gap:14px}
+
+    .avatar-wrapper{position:relative}
+    .avatar{
+      width:56px;height:56px;border-radius:50%;
+      background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      border:3px solid rgba(102,126,234,.3);
+      display:flex;align-items:center;justify-content:center;font-size:28px;transition:transform .3s ease;cursor:pointer
+    }
+    .avatar:hover{transform:scale(1.05)}
+
+    /* Выпадающее меню у аватарки */
+    .profile-menu{
+      position:absolute; top:64px; left:0; width:230px;
+      background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.12); border-radius:14px;
+      box-shadow:0 18px 48px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+      backdrop-filter: blur(6px);
+      padding:8px; opacity:0; transform:translateY(-8px) scale(.98);
+      pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+      z-index:20; max-height:60vh; overflow:auto
+    }
+    .profile-menu.show{opacity:1; transform:translateY(0) scale(1); pointer-events:auto}
+    .profile-menu::before{
+      content:""; position:absolute; top:-8px; left:16px;
+      width:14px; height:14px; transform:rotate(45deg);
+      background:linear-gradient(145deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+      border-left:1px solid rgba(255,255,255,.12);
+      border-top:1px solid rgba(255,255,255,.12);
+    }
+    .menu-group{padding:6px}
+    .menu-title{color:rgba(255,255,255,.55);font-size:11px;font-weight:700;letter-spacing:.3px;padding:6px 10px 8px;text-transform:uppercase}
+    .menu-item{
+      width:100%; display:flex; align-items:center; gap:10px;
+      padding:10px 12px; border-radius:10px; cursor:pointer;
+      border:1px solid transparent;
+      background:transparent; color:#fff; font-weight:700; font-size:13px;
+      transition:background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .menu-item:hover{
+      background:linear-gradient(135deg,rgba(78,205,196,.18),rgba(68,160,141,.18));
+      border-color:rgba(78,205,196,.45);
+      transform:translateY(-1px);
+      box-shadow:0 10px 24px rgba(78,205,196,.12);
+    }
+    .menu-item:active{transform:translateY(0)}
+    .menu-icon{
+      width:28px; height:28px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      font-size:16px;
+    }
+    .menu-kbd{
+      margin-left:auto; color:rgba(255,255,255,.45); font-size:11px; font-weight:800;
+      border:1px solid rgba(255,255,255,.15); border-radius:6px; padding:2px 6px;
+      background:rgba(255,255,255,.04);
+    }
+    .menu-sep{
+      height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);
+      margin:6px 8px;
+    }
+
+    .username{color:#fff;font-size:22px;font-weight:800;letter-spacing:.2px}
+
+    .stats-button{
+      width:48px;height:48px;background:rgba(102,126,234,.15);
+      border:2px solid rgba(102,126,234,.3);border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:24px;cursor:pointer;transition:.3s
+    }
+    .stats-button:hover{background:rgba(102,126,234,.25);transform:scale(1.05)}
+
+    /* Контент заполняет всю доступную высоту между хедером и низом */
+    .app-content{
+      position:absolute; left:0; right:0; overflow-y:auto;
+      padding:20px 20px 96px; /* нижний запас под FAB */
+    }
+
+    .category-card{
+      background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.1);border-radius:16px;
+      padding:12px;margin-bottom:12px;cursor:pointer;transition:.3s;
+      display:flex;align-items:center;gap:12px;animation:slideIn .4s ease forwards
+    }
+    .category-card:hover{background:linear-gradient(135deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.04) 100%);transform:translateX(5px)}
+    .category-card.overdue{border-color:rgba(255,107,107,.3);background:linear-gradient(135deg,rgba(255,107,107,.1) 0%,rgba(255,107,107,.05) 100%)}
+
+    .category-avatar{width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:26px}
+    .category-info{flex:1}
+    .category-title{color:#ffd700;font-size:14px;font-weight:800;margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase}
+    .category-progress{width:100%;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin-bottom:3px}
+    .category-progress-fill{height:100%;background:linear-gradient(90deg,#4ecdc4 0%,#44a08d 100%)}
+    .category-subtitle{color:rgba(255,255,255,.5);font-size:11px}
+    .category-count{display:flex;flex-direction:column;align-items:center;gap:3px}
+    .count-number{width:40px;height:40px;background:rgba(102,126,234,.2);border:2px solid rgba(102,126,234,.4);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+    .count-total{color:rgba(255,255,255,.4);font-size:10px}
+
+    /* FAB внутри контейнера */
+    .fab-button{
+      position:absolute;bottom:20px;right:20px;z-index:9;
+      width:60px;height:60px;border:none;border-radius:50%;
+      background:linear-gradient(135deg,#4ecdc4 0%,#44a08d 100%);
+      color:#fff;font-size:28px;cursor:pointer;transition:.3s;
+      box-shadow:0 8px 25px rgba(78,205,196,.4);display:flex;align-items:center;justify-content:center
+    }
+    .fab-button:hover{transform:scale(1.1) rotate(90deg);box-shadow:0 12px 35px rgba(78,205,196,.6)}
+
+    /* Статистика: overlay + панель */
+    .stats-overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);opacity:0;pointer-events:none;transition:.3s;z-index:10}
+    .stats-overlay.active{opacity:1;pointer-events:all}
+
+    .stats-panel{
+      position:absolute;top:0;right:-100%;width:100%;height:100%;
+      background:#0f1419;z-index:11;transition:right .4s cubic-bezier(.4,0,.2,1);
+      overflow-y:auto
+    }
+    .stats-panel.active{right:0}
+
+    .stats-header{
+      background:linear-gradient(180deg,#1e2936 0%,#0f1419 100%);
+      padding:20px;border-bottom:1px solid rgba(255,255,255,.05);
+      display:flex;align-items:center;gap:15px
+    }
+    .back-button{
+      width:40px;height:40px;background:rgba(102,126,234,.15);
+      border:2px solid rgba(102,126,234,.3);border-radius:10px;
+      display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;transition:.2s
+    }
+    .back-button:hover{background:rgba(102,126,234,.25)}
+    .stats-title{color:#fff;font-size:22px;font-weight:800;letter-spacing:.2px}
+    .stats-content{padding:20px}
+    .stats-section{margin-bottom:22px}
+    .section-title{color:#ffd700;font-size:15px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+    /* ВКЛАДКИ */
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+    .tab{
+      padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);color:#fff;font-weight:800;font-size:13px;
+      cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .2s ease,border-color .2s ease;
+      text-align:center
+    }
+    .tab:hover{background:rgba(255,255,255,.08);transform:translateY(-1px);box-shadow:0 6px 16px rgba(255,255,255,.06)}
+    .tab:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(102,126,234,.35)}
+    .tab.active{
+      background:linear-gradient(135deg,rgba(78,205,196,.22) 0%,rgba(68,160,141,.22) 100%);
+      border-color:rgba(78,205,196,.55);
+      box-shadow:0 8px 24px rgba(78,205,196,.18)
+    }
+
+    .tab-panel{display:none}
+    .tab-panel.active{display:block;animation:fadeIn .25s ease}
+
+    /* Заголовки периодов / KPI */
+    .month-header,.week-header,.year-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .month-title,.week-title,.year-title{color:#fff;font-weight:800;letter-spacing:.3px}
+    .nav-btn{
+      width:34px;height:34px;border-radius:10px;
+      background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+      color:#fff;font-size:16px;cursor:pointer;transition:.2s
+    }
+    .nav-btn:hover{background:rgba(255,255,255,.12)}
+
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .kpi-card{
+      background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;min-height:112px;display:flex;flex-direction:column;justify-content:center
+    }
+    .kpi-title{color:rgba(255,255,255,.65);font-size:12px;margin-bottom:8px;font-weight:700}
+    .kpi-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:40px}
+    .kpi-value{
+      color:#4ecdc4;font-size:24px;font-weight:900;line-height:1;
+      white-space:nowrap;min-width:0;flex:1 1 auto;
+      font-variant-numeric: tabular-nums;
+      -moz-font-feature-settings:"tnum";font-feature-settings:"tnum";
+      letter-spacing:.2px
+    }
+    /* KPI с временем — чуть меньше шрифт, чтобы ВСЕГДА помещалось в одну строку */
+    .kpi-grid .kpi-card:nth-child(2) .kpi-value{font-size:21px}
+
+    .kpi-delta{
+      font-size:12px;font-weight:800;padding:4px 8px;border-radius:999px;border:1px solid;opacity:.95;white-space:nowrap;flex:0 0 auto
+    }
+    .kpi-delta.up{color:#2dd4bf;border-color:rgba(45,212,191,.5);background:rgba(45,212,191,.1)}
+    .kpi-delta.down{color:#fb7185;border-color:rgba(251,113,133,.5);background:rgba(251,113,133,.1)}
+    .kpi-note{margin-top:6px;color:rgba(255,255,255,.45);font-size:11px}
+
+    /* Теплокарта */
+    .heatmap-container{
+      background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px
+    }
+    .heatmap-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .heatmap-day{aspect-ratio:1;border-radius:3px;background:rgba(102,126,234,.1);transition:.2s;cursor:pointer}
+    .heatmap-day:hover{transform:scale(1.08)}
+    .heatmap-day.level-0{background:rgba(102,126,234,.1)}
+    .heatmap-day.level-1{background:rgba(78,205,196,.3)}
+    .heatmap-day.level-2{background:rgba(78,205,196,.6)}
+    .heatmap-day.level-3{background:rgba(78,205,196,.9)}
+    .heatmap-day.level-4{background:#4ecdc4}
+
+    /* Графики */
+    .chart-container{
+      background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px;height:180px;
+      display:flex;align-items:flex-end;justify-content:space-around;gap:8px
+    }
+    .chart-bar{
+      flex:1;min-width:10px;background:linear-gradient(180deg,#667eea 0%,#764ba2 100%);
+      border-radius:6px 6px 0 0;position:relative;transition:.2s;cursor:pointer
+    }
+    .chart-bar:hover{opacity:.85;transform:translateY(-5px)}
+    .chart-label{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.55);font-size:10px;white-space:nowrap}
+
+    /* Списки */
+    .weekday-stats{
+      background:linear-gradient(135deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.02) 100%);
+      border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:16px
+    }
+    .weekday-item{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+    .weekday-item:last-child{margin-bottom:0}
+    .weekday-label{color:rgba(255,255,255,.7);font-size:13px;width:48px}
+    .weekday-bar-container{flex:1;height:20px;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden}
+    .weekday-bar{height:100%;background:linear-gradient(90deg,#4ecdc4 0%,#44a08d 100%);border-radius:10px;transition:width .5s ease}
+    .weekday-count{color:#4ecdc4;font-size:13px;font-weight:700;width:36px;text-align:right}
+
+    /* Scrollbar */
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-thumb{background:rgba(102,126,234,.3);border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(102,126,234,.5)}
+
+    /* Animations */
+    @keyframes slideIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+    /* stagger для карточек */
+    .category-card:nth-child(1){animation-delay:.1s}
+    .category-card:nth-child(2){animation-delay:.2s}
+    .category-card:nth-child(3){animation-delay:.3s}
+    .category-card:nth-child(4){animation-delay:.4s}
+    .category-card:nth-child(5){animation-delay:.5s}
+    .category-card:nth-child(6){animation-delay:.6s}
+  </style>
+</head>
+<body>
+  <div class="phone-container">
+    <!-- Основной экран -->
+    <div class="app-header" id="appHeader">
+      <div class="profile-bar">
+        <div class="profile-info">
+          <div class="avatar-wrapper">
+            <div class="avatar" onclick="toggleProfileMenu(event)">🌸</div>
+
+            <!-- Выпадающее меню -->
+            <div class="profile-menu" id="profileMenu" role="menu" aria-hidden="true">
+              <div class="menu-title">Быстрые действия</div>
+              <div class="menu-group">
+                <button class="menu-item" data-action="profile" role="menuitem">
+                  <div class="menu-icon">👤</div>
+                  Профиль
+                  <span class="menu-kbd">P</span>
+                </button>
+                <button class="menu-item" data-action="theme" role="menuitem">
+                  <div class="menu-icon">🎨</div>
+                  Сменить тему
+                  <span class="menu-kbd">T</span>
+                </button>
+                <button class="menu-item" data-action="settings" role="menuitem">
+                  <div class="menu-icon">⚙️</div>
+                  Настройки
+                  <span class="menu-kbd">S</span>
+                </button>
+              </div>
+              <div class="menu-sep"></div>
+              <div class="menu-group">
+                <button class="menu-item" data-action="change-avatar" role="menuitem">
+                  <div class="menu-icon">🖼️</div>
+                  Сменить аватар
+                </button>
+                <button class="menu-item" data-action="logout" role="menuitem">
+                  <div class="menu-icon">🚪</div>
+                  Выйти
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div><div class="username">Мои задачи</div></div>
+        </div>
+        <div class="stats-button" onclick="openStats()">📊</div>
+      </div>
+    </div>
+
+    <div class="app-content" id="appContent">
+      <div class="category-card" onclick="openCategory('all')">
+        <div class="category-avatar">🎯</div>
+        <div class="category-info">
+          <div class="category-title">Все</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:57%"></div></div>
+          <div class="category-subtitle">Все задачи</div>
+        </div>
+        <div class="category-count"><div class="count-number">21</div><div class="count-total">всего</div></div>
+      </div>
+
+      <div class="category-card" onclick="openCategory('today')">
+        <div class="category-avatar">📅</div>
+        <div class="category-info">
+          <div class="category-title">Сегодня</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:60%"></div></div>
+          <div class="category-subtitle">На сегодня</div>
+        </div>
+        <div class="category-count"><div class="count-number">5</div><div class="count-total">задач</div></div>
+      </div>
+
+      <div class="category-card" onclick="openCategory('tomorrow')">
+        <div class="category-avatar">🌅</div>
+        <div class="category-info">
+          <div class="category-title">Завтра</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:40%"></div></div>
+          <div class="category-subtitle">На завтра</div>
+        </div>
+        <div class="category-count"><div class="count-number">2</div><div class="count-total">задач</div></div>
+      </div>
+
+      <div class="category-card" onclick="openCategory('week')">
+        <div class="category-avatar">📆</div>
+        <div class="category-info">
+          <div class="category-title">Следующие 7 дней</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:55%"></div></div>
+          <div class="category-subtitle">На неделю</div>
+        </div>
+        <div class="category-count"><div class="count-number">7</div><div class="count-total">задач</div></div>
+      </div>
+
+      <div class="category-card" onclick="openCategory('completed')">
+        <div class="category-avatar">✅</div>
+        <div class="category-info">
+          <div class="category-title">Выполненные</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:100%"></div></div>
+          <div class="category-subtitle">Завершенные задачи</div>
+        </div>
+        <div class="category-count"><div class="count-number">12</div><div class="count-total">готово</div></div>
+      </div>
+
+      <div class="category-card overdue" onclick="openCategory('overdue')">
+        <div class="category-avatar">⚠️</div>
+        <div class="category-info">
+          <div class="category-title" style="color:#ff6b6b">Просроченные</div>
+          <div class="category-progress"><div class="category-progress-fill" style="width:20%;background:linear-gradient(90deg,#ff6b6b,#ee5a6f)"></div></div>
+          <div class="category-subtitle" style="color:rgba(255,107,107,.7)">Требуют внимания</div>
+        </div>
+        <div class="category-count">
+          <div class="count-number" style="background:rgba(255,107,107,.2);border-color:rgba(255,107,107,.4);color:#ff6b6b">2</div>
+          <div class="count-total">срочно</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="fab-button" onclick="quickAddTask()">+</button>
+
+    <!-- Overlay -->
+    <div class="stats-overlay" id="statsOverlay" onclick="closeStats()"></div>
+
+    <!-- Панель статистики -->
+    <div class="stats-panel" id="statsPanel">
+      <div class="stats-header">
+        <div class="back-button" onclick="closeStats()">←</div>
+        <div class="stats-title">📊 Статистика</div>
+      </div>
+
+      <div class="stats-content">
+        <!-- Вкладки -->
+        <div class="tabs" id="statsTabs">
+          <button class="tab" data-tab="week">Неделя</button>
+          <button class="tab active" data-tab="month">Месяц</button>
+          <button class="tab" data-tab="year">Год</button>
+        </div>
+
+        <!-- МЕСЯЦ -->
+        <div class="tab-panel active" id="tab-month">
+          <div class="stats-section">
+            <div class="section-title">📆 Статистика за месяц</div>
+            <div class="month-header">
+              <button class="nav-btn" onclick="alert('Макет: предыдущий месяц')">‹</button>
+              <div class="month-title">Ноябрь 2025</div>
+              <button class="nav-btn" onclick="alert('Макет: следующий месяц')">›</button>
+            </div>
+
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-title">Выполнено задач</div>
+                <div class="kpi-row"><div class="kpi-value">45</div><div class="kpi-delta up">+12%</div></div>
+                <div class="kpi-note">к прошлому месяцу</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-title">Затрачено времени</div>
+                <div class="kpi-row"><div class="kpi-value">18&nbsp;ч&nbsp;30&nbsp;м</div><div class="kpi-delta down">−8%</div></div>
+                <div class="kpi-note">к прошлому месяцу</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-title">🔥 Карта активности (28 дней)</div>
+            <div class="heatmap-container">
+              <div class="heatmap-grid" id="heatmapGridMonth"></div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-title">📅 По неделям месяца</div>
+            <div class="weekday-stats">
+              <div class="weekday-item"><div class="weekday-label">Нед 1</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:70%"></div></div><div class="weekday-count">9</div></div>
+              <div class="weekday-item"><div class="weekday-label">Нед 2</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:60%"></div></div><div class="weekday-count">7</div></div>
+              <div class="weekday-item"><div class="weekday-label">Нед 3</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:82%"></div></div><div class="weekday-count">11</div></div>
+              <div class="weekday-item"><div class="weekday-label">Нед 4</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:50%"></div></div><div class="weekday-count">6</div></div>
+              <div class="weekday-item"><div class="weekday-label">Нед 5</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:65%"></div></div><div class="weekday-count">8</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- НЕДЕЛЯ -->
+        <div class="tab-panel" id="tab-week">
+          <div class="stats-section">
+            <div class="section-title">🗓️ Статистика за неделю</div>
+            <div class="week-header">
+              <button class="nav-btn" onclick="alert('Макет: предыдущая неделя')">‹</button>
+              <div class="week-title">Неделя 3–9 ноя 2025</div>
+              <button class="nav-btn" onclick="alert('Макет: следующая неделя')">›</button>
+            </div>
+
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-title">Выполнено задач</div>
+                <div class="kpi-row"><div class="kpi-value">12</div><div class="kpi-delta up">+20%</div></div>
+                <div class="kpi-note">к прошлой неделе</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-title">Затрачено времени</div>
+                <div class="kpi-row"><div class="kpi-value">6&nbsp;ч&nbsp;40&nbsp;м</div><div class="kpi-delta down">−5%</div></div>
+                <div class="kpi-note">к прошлой неделе</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-title">📅 По дням (Пн–Вс)</div>
+            <div class="weekday-stats">
+              <div class="weekday-item"><div class="weekday-label">Пн</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:65%"></div></div><div class="weekday-count">3</div></div>
+              <div class="weekday-item"><div class="weekday-label">Вт</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:80%"></div></div><div class="weekday-count">4</div></div>
+              <div class="weekday-item"><div class="weekday-label">Ср</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:55%"></div></div><div class="weekday-count">2</div></div>
+              <div class="weekday-item"><div class="weekday-label">Чт</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:70%"></div></div><div class="weekday-count">3</div></div>
+              <div class="weekday-item"><div class="weekday-label">Пт</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:90%"></div></div><div class="weekday-count">5</div></div>
+              <div class="weekday-item"><div class="weekday-label">Сб</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:40%"></div></div><div class="weekday-count">1</div></div>
+              <div class="weekday-item"><div class="weekday-label">Вс</div><div class="weekday-bar-container"><div class="weekday-bar" style="width:30%"></div></div><div class="weekday-count">1</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ГОД -->
+        <div class="tab-panel" id="tab-year">
+          <div class="stats-section">
+            <div class="section-title">📅 Статистика за год</div>
+            <div class="year-header">
+              <button class="nav-btn" onclick="alert('Макет: предыдущий год')">‹</button>
+              <div class="year-title">2025</div>
+              <button class="nav-btn" onclick="alert('Макет: следующий год')">›</button>
+            </div>
+
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-title">Выполнено задач (за год)</div>
+                <div class="kpi-row"><div class="kpi-value">412</div><div class="kpi-delta up">+9%</div></div>
+                <div class="kpi-note">к 2024</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-title">Затрачено времени (за год)</div>
+                <div class="kpi-row"><div class="kpi-value">176&nbsp;ч</div><div class="kpi-delta up">+3%</div></div>
+                <div class="kpi-note">к 2024</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-title">📊 График за год</div>
+            <div class="chart-container" id="yearChart">
+              <div class="chart-bar" style="height:55%"><div class="chart-label">Янв</div></div>
+              <div class="chart-bar" style="height:62%"><div class="chart-label">Фев</div></div>
+              <div class="chart-bar" style="height:48%"><div class="chart-label">Мар</div></div>
+              <div class="chart-bar" style="height:70%"><div class="chart-label">Апр</div></div>
+              <div class="chart-bar" style="height:65%"><div class="chart-label">Май</div></div>
+              <div class="chart-bar" style="height:60%"><div class="chart-label">Июн</div></div>
+              <div class="chart-bar" style="height:75%"><div class="chart-label">Июл</div></div>
+              <div class="chart-bar" style="height:50%"><div class="chart-label">Авг</div></div>
+              <div class="chart-bar" style="height:90%"><div class="chart-label">Сен</div></div>
+              <div class="chart-bar" style="height:72%"><div class="chart-label">Окт</div></div>
+              <div class="chart-bar" style="height:85%"><div class="chart-label">Ноя</div></div>
+              <div class="chart-bar" style="height:58%"><div class="chart-label">Дек</div></div>
+            </div>
+          </div>
+
+          <div class="stats-section">
+            <div class="section-title">🏁 Итоги за всё время</div>
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-title">Всего задач</div>
+                <div class="kpi-row"><div class="kpi-value" id="totalTasksAllTime">584</div></div>
+                <div class="kpi-note">с первого дня использования</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-title">Время всего</div>
+                <div class="kpi-row"><div class="kpi-value" id="totalTimeAllTime">241&nbsp;ч</div></div>
+                <div class="kpi-note">накопленная метрика</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /stats-content -->
+    </div><!-- /stats-panel -->
+  </div>
+
+  <script>
+    const avatars=['🌸','🦋','🌺','🎀','💮','🌙','⭐','💫','🎨','🎭'];
+    let currentAvatarIndex=0;
+
+    function editProfile(){
+      const avatar=document.querySelector('.avatar');
+      currentAvatarIndex=(currentAvatarIndex+1)%avatars.length;
+      avatar.textContent=avatars[currentAvatarIndex];
+    }
+
+    // ВЫПАДАЮЩЕЕ МЕНЮ АВАТАРКИ
+    function toggleProfileMenu(e){
+      e.stopPropagation();
+      const menu=document.getElementById('profileMenu');
+      const isOpen=menu.classList.contains('show');
+      document.querySelectorAll('.profile-menu.show').forEach(m=>m.classList.remove('show'));
+      if(!isOpen){ menu.classList.add('show'); menu.setAttribute('aria-hidden','false'); }
+      else { menu.classList.remove('show'); menu.setAttribute('aria-hidden','true'); }
+    }
+
+    // Закрытие по клику вне / Esc
+    document.addEventListener('click',(e)=>{
+      const menu=document.getElementById('profileMenu');
+      const avatar=document.querySelector('.avatar');
+      if(!menu) return;
+      if(menu.classList.contains('show') && !menu.contains(e.target) && !avatar.contains(e.target)){
+        menu.classList.remove('show'); menu.setAttribute('aria-hidden','true');
+      }
+    });
+    document.addEventListener('keydown',(e)=>{
+      if(e.key==='Escape'){
+        const menu=document.getElementById('profileMenu');
+        if(menu&&menu.classList.contains('show')){
+          menu.classList.remove('show'); menu.setAttribute('aria-hidden','true');
+        }
+      }
+    });
+
+    // Заглушки действий меню
+    document.addEventListener('click',(e)=>{
+      const btn=e.target.closest('.menu-item');
+      if(!btn) return;
+      const action=btn.dataset.action;
+      if(action==='change-avatar'){ editProfile(); }
+      // Остальные пункты пока без логики
+      const menu=document.getElementById('profileMenu');
+      if(menu) { menu.classList.remove('show'); menu.setAttribute('aria-hidden','true'); }
+    });
+
+    function quickAddTask(){
+      const tasks=['🎨 Нарисовать арт','📚 Прочитать мангу','🎮 Пройти уровень','✍️ Написать обзор'];
+      const task=tasks[Math.floor(Math.random()*tasks.length)];
+      alert(`✨ Быстрое добавление!\n\nДобавлена задача: ${task}`);
+    }
+
+    function openCategory(category){
+      const titles={all:'Все задачи',today:'Сегодня',tomorrow:'Завтра',week:'Следующие 7 дней',completed:'Выполненные',overdue:'Просроченные'};
+      alert(`📂 Открыта категория: ${titles[category]}\n\nЗдесь будет список задач этой категории`);
+    }
+
+    // Открыть/закрыть панель статистики
+    function openStats(){
+      document.getElementById('statsOverlay').classList.add('active');
+      document.getElementById('statsPanel').classList.add('active');
+    }
+    function closeStats(){
+      document.getElementById('statsOverlay').classList.remove('active');
+      document.getElementById('statsPanel').classList.remove('active');
+    }
+
+    // Теплокарта (месяц, 28 дней — макет)
+    function generateHeatmap(containerId){
+      const grid=document.getElementById(containerId);
+      if(!grid) return;
+      grid.innerHTML='';
+      const levels=[0,1,2,3,4];
+      for(let i=0;i<28;i++){
+        const d=document.createElement('div');
+        d.className=`heatmap-day level-${levels[Math.floor(Math.random()*levels.length)]}`;
+        d.title=`День ${i+1}`;
+        grid.appendChild(d);
+      }
+    }
+
+    // Динамический размер контента (всегда помещается)
+    function resizeAppContent(){
+      const container=document.querySelector('.phone-container');
+      const header=document.getElementById('appHeader');
+      const content=document.getElementById('appContent');
+      if(!container||!header||!content) return;
+      const h=container.clientHeight - header.offsetHeight;
+      content.style.top = header.offsetHeight + 'px';
+      content.style.height = h + 'px';
+    }
+
+    // Переключение вкладок с анимацией
+    function setupTabs(){
+      const tabs=document.querySelectorAll('.tab');
+      const panels=document.querySelectorAll('.tab-panel');
+
+      tabs.forEach(tab=>{
+        tab.addEventListener('click', ()=>{
+          if(tab.classList.contains('active')) return;
+
+          tabs.forEach(t=>t.classList.remove('active'));
+          panels.forEach(p=>p.classList.remove('active'));
+
+          tab.classList.add('active');
+          const target=document.getElementById(`tab-${tab.dataset.tab}`);
+          if(target){
+            target.classList.remove('active');
+            void target.offsetWidth;
+            target.classList.add('active');
+          }
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', ()=>{
+      setupTabs();
+      generateHeatmap('heatmapGridMonth');
+      resizeAppContent();
+      window.addEventListener('resize', resizeAppContent);
+    });
+  </script>
+</body>
+</html>
